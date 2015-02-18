@@ -42,7 +42,7 @@ module JavaBuildpack
         @droplet.java_opts.add_system_property('newrelic.enable.java.8', 'true') if @droplet.java_home.version[1] == '8'
         @droplet.java_opts.add_system_property('newrelic.config.proxy_host', proxy_host) if !proxy_host.nil? and !proxy_host.empty?
         @droplet.java_opts.add_system_property('newrelic.config.proxy_password', proxy_password) if !proxy_password.nil? and !proxy_password.empty?
-        @droplet.java_opts.add_system_property('newrelic.config.proxy_port', proxy_port) if !proxy_port.nil? and !proxy_port.empty?
+        @droplet.java_opts.add_system_property('newrelic.config.proxy_port', proxy_port) if !proxy_port.nil?
       end
 
       protected
