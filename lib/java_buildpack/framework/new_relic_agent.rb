@@ -73,15 +73,15 @@ module JavaBuildpack
       end
 
       def proxy_host
-        @application.services.find_service(PROXY)['credentials']['host']
+        @application.services.find_service(PROXY_FILTER)['credentials']['host']
       end
 
       def proxy_password
-        @application.services.find_service(PROXY)['credentials']['password']
+        @application.services.find_service(PROXY_FILTER)['credentials']['password']
       end
 
       def proxy_port
-        @application.services.find_service(PROXY)['credentials']['port']
+        @application.services.find_service(PROXY_FILTER)['credentials']['port']
       end
 
     end
