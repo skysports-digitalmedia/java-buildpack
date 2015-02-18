@@ -40,6 +40,9 @@ module JavaBuildpack
         .add_system_property('newrelic.config.app_name', "'#{application_name}'")
         .add_system_property('newrelic.config.log_file_path', logs_dir)
         @droplet.java_opts.add_system_property('newrelic.enable.java.8', 'true') if @droplet.java_home.version[1] == '8'
+        @droplet.java_opts.add_system_property('newrelic.config.proxy_host', proxy_host) if proxy_host?
+        @droplet.java_opts.add_system_property('newrelic.config.proxy_password', proxy_password) if proxy_password?
+        @droplet.java_opts.add_system_property('newrelic.config.proxy_port', proxy_port) if proxt_port?
       end
 
       protected
@@ -52,8 +55,10 @@ module JavaBuildpack
       private
 
       FILTER = /newrelic/.freeze
+      PROXY_FILTER = /proxy/.freeze
 
       private_constant :FILTER
+      private_constant :PROXY_FILTER
 
       def application_name
         @application.details['application_name']
@@ -65,6 +70,18 @@ module JavaBuildpack
 
       def logs_dir
         @droplet.sandbox + 'logs'
+      end
+
+      def proxy_host
+        @application.services.find_service(PROXY)['credentials']['host']
+      end
+
+      def proxy_password
+        @application.services.find_service(PROXY)['credentials']['password']
+      end
+
+      def proxy_port
+        @application.services.find_service(PROXY)['credentials']['port']
       end
 
     end
