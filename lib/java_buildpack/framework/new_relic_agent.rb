@@ -26,53 +26,70 @@ module JavaBuildpack
 
       # (see JavaBuildpack::Component::BaseComponent#compile)
       def compile
-        FileUtils.mkdir_p logs_dir
         download_jar
         @droplet.copy_resources
       end
 
       # (see JavaBuildpack::Component::BaseComponent#release)
       def release
-        @droplet.java_opts
-        .add_javaagent(@droplet.sandbox + jar_name)
-        .add_system_property('newrelic.home', @droplet.sandbox)
-        .add_system_property('newrelic.config.license_key', license_key)
-        .add_system_property('newrelic.config.app_name', "'#{application_name}'")
-        .add_system_property('newrelic.config.log_file_path', logs_dir)
-        .add_system_property('newrelic.config.log_level', "info")
-        @droplet.java_opts.add_system_property('newrelic.enable.java.8', 'true') if @droplet.java_home.version[1] == '8'
-        @droplet.java_opts.add_system_property('newrelic.config.proxy_host', '$WEB_PROXY_HOST') if !proxy_host.nil? and !proxy_host.empty?
-        @droplet.java_opts.add_system_property('newrelic.config.proxy_user', '$WEB_PROXY_USER') if !proxy_user.nil? and !proxy_user.empty?
-        @droplet.java_opts.add_system_property('newrelic.config.proxy_password', '$WEB_PROXY_PASS') if !proxy_password.nil? and !proxy_password.empty?
-        @droplet.java_opts.add_system_property('newrelic.config.proxy_port', '$WEB_PROXY_PORT') if !proxy_port.nil?
+        credentials = @application.services.find_service(FILTER)['credentials']
+        java_opts   = @droplet.java_opts
+        configuration = {}
+
+        apply_configuration(credentials, configuration)
+        apply_user_configuration(credentials, configuration)
+        write_java_opts(java_opts, configuration)
+
+        java_opts.add_javaagent(@droplet.sandbox + jar_name)
+                 .add_system_property('newrelic.home', @droplet.sandbox)
+        
+        java_opts.add_system_property('newrelic.enable.java.8', 'true') if @droplet.java_home.version[1] == '8'
+        java_opts.add_system_property('newrelic.config.proxy_host', '$WEB_PROXY_HOST') if !proxy_host.nil? and !proxy_host.empty?
+        java_opts.add_system_property('newrelic.config.proxy_user', '$WEB_PROXY_USER') if !proxy_user.nil? and !proxy_user.empty?
+        java_opts.add_system_property('newrelic.config.proxy_password', '$WEB_PROXY_PASS') if !proxy_password.nil? and !proxy_password.empty?
+        java_opts.add_system_property('newrelic.config.proxy_port', '$WEB_PROXY_PORT') if !proxy_port.nil?
+        java_opts.add_system_property('newrelic.config.app_name', "'#{application_name}'")
+        java_opts.add_system_property('newrelic.enable.java.8', 'true') if @droplet.java_home.java_8_or_later?
       end
 
       protected
 
       # (see JavaBuildpack::Component::VersionedDependencyComponent#supports?)
       def supports?
-        @application.services.one_service? FILTER, 'licenseKey'
+        @application.services.one_service? FILTER, [LICENSE_KEY, LICENSE_KEY_USER]
       end
 
-      p
 
       FILTER = /newrelic/.freeze
       PROXY_FILTER = /proxy/.freeze
-
-      private_constant :FILTER
-      private_constant :PROXY_FILTER
 
       def application_name
         # @application.details['new_relic_application_name']
         ENV['new_relic_application_name']
       end
 
-      def license_key
-        @application.services.find_service(FILTER)['credentials']['licenseKey']
+      LICENSE_KEY = 'licenseKey'.freeze
+
+      LICENSE_KEY_USER = 'license_key'.freeze
+
+      private_constant :PROXY_FILTER, :FILTER, :LICENSE_KEY, :LICENSE_KEY_USER
+
+      def apply_configuration(credentials, configuration)
+        configuration['log_file_name'] = 'STDOUT'
+        configuration[LICENSE_KEY_USER] = credentials[LICENSE_KEY]
+        configuration['app_name'] = @application.details['application_name']
       end
 
-      def logs_dir
-        @droplet.sandbox + 'logs'
+      def apply_user_configuration(credentials, configuration)
+        credentials.each do |key, value|
+          configuration[key] = value
+        end
+      end
+
+      def write_java_opts(java_opts, configuration)
+        configuration.each do |key, value|
+          java_opts.add_system_property("newrelic.config.#{key}", value)
+        end
       end
 
       def proxy_host

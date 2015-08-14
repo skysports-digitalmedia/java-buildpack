@@ -16,6 +16,7 @@ cf push <APP-NAME> -p <ARTIFACT> -b https://github.com/cloudfoundry/java-buildpa
 ## Examples
 The following are _very_ simple examples for deploying the artifact types that we support.
 
+* [Embedded web server](docs/example-embedded-web-server.md)
 * [Grails](docs/example-grails.md)
 * [Groovy](docs/example-groovy.md)
 * [Java Main](docs/example-java_main.md)
@@ -24,7 +25,17 @@ The following are _very_ simple examples for deploying the artifact types that w
 * [Spring Boot CLI](docs/example-spring_boot_cli.md)
 
 ## Configuration and Extension
-The buildpack supports configuration and extension through the use of Git repository forking.  The easiest way to accomplish this is to use [GitHub's forking functionality][] to create a copy of this repository.  Make the required configuration and extension changes in the copy of the repository.  Then specify the URL of the new repository when pushing Cloud Foundry applications.  If the modifications are generally applicable to the Cloud Foundry community, please submit a [pull request][] with the changes.
+The buildpack supports extension through the use of Git repository forking. The easiest way to accomplish this is to use [GitHub's forking functionality][] to create a copy of this repository.  Make the required extension changes in the copy of the repository. Then specify the URL of the new repository when pushing Cloud Foundry applications. If the modifications are generally applicable to the Cloud Foundry community, please submit a [pull request][] with the changes.
+
+Buildpack configuration can be overridden with an environment variable matching the configuration file you wish to override minus the `.yml` extension and with a prefix of `JBP_CONFIG`. It is not possible to add new configuration properties and properties with `nil` or empty values will be ignored by the buildpack. The value of the variable should be valid inline yaml. For example, to change the default version of Java to 7 and adjust the memory heuristics apply this environment variable to the application.
+
+```cf set-env my-application JBP_CONFIG_OPEN_JDK_JRE '[jre: {version: 1.7.0_+}, memory_calculator: {memory_heuristics: {heap: 85, stack: 10}}]'```
+
+If the key or value contains a special character such as `:` it should be escaped with double quotes. For example, to change the default repository path for the buildpack.
+
+```cf set-env my-application JBP_CONFIG_REPOSITORY '[ default_repository_root: "http://repo.example.io" ]'```
+
+Environment variable can also be specified in the applications `manifest` file. See the [Environment Variables][] documentation for more information.
 
 To learn how to configure various properties of the buildpack, follow the "Configuration" links below. More information on extending the buildpack is available [here](docs/extending.md).
 
@@ -42,8 +53,11 @@ To learn how to configure various properties of the buildpack, follow the "Confi
 	* [Tomcat](docs/container-tomcat.md) ([Configuration](docs/container-tomcat.md#configuration))
 * Standard Frameworks
 	* [AppDynamics Agent](docs/framework-app_dynamics_agent.md) ([Configuration](docs/framework-app_dynamics_agent.md#configuration))
+	* [Introscope Agent](docs/framework-introscope_agent.md) ([Configuration](docs/framework-introscope_agent.md#configuration))
+	* [DynaTrace Agent](docs/framework-dyna_trace_agent.md) ([Configuration](docs/framework-dyna_trace_agent.md#configuration))
 	* [Java Options](docs/framework-java_opts.md) ([Configuration](docs/framework-java_opts.md#configuration))
 	* [JRebel Agent](docs/framework-jrebel_agent.md) ([Configuration](docs/framework-jrebel_agent.md#configuration))
+	* [Luna Security Provider](docs/framework-luna_security_provider.md) ([Configuration](docs/framework-luna_security_provider.md#configuration))
 	* [MariaDB JDBC](docs/framework-maria_db_jdbc.md) ([Configuration](docs/framework-maria_db_jdbc.md#configuration))
 	* [New Relic Agent](docs/framework-new_relic_agent.md) ([Configuration](docs/framework-new_relic_agent.md#configuration))
 	* [Play Framework Auto Reconfiguration](docs/framework-play_framework_auto_reconfiguration.md) ([Configuration](docs/framework-play_framework_auto_reconfiguration.md#configuration))
@@ -87,9 +101,11 @@ Creating build/java-buildpack-cfd6b17.zip
 ### Offline Package
 The offline package is a version of the buildpack designed to run without access to a network.  It packages the latest version of each dependency (as configured in the [`config/` directory][]) and [disables `remote_downloads`][]. This package is about 180M in size.  To create the offline package, use the `OFFLINE=true` argument:
 
+To pin the version of dependencies used by the buildpack to the ones currently resolvable use the `PINNED=true` argument. This will update the [`config/` directory][] to contain exact version of each dependency instead of version ranges.
+
 ```bash
 bundle install
-bundle exec rake package OFFLINE=true
+bundle exec rake package OFFLINE=true PINNED=true
 ...
 Creating build/java-buildpack-offline-cfd6b17.zip
 ```
@@ -125,6 +141,7 @@ This buildpack is released under version 2.0 of the [Apache License][].
 [Cloud Foundry]: http://www.cloudfoundry.com
 [contributor guidelines]: CONTRIBUTING.md
 [disables `remote_downloads`]: docs/extending-caches.md#configuration
+[Environment Variables]: http://docs.cloudfoundry.org/devguide/deploy-apps/manifest.html#env-block
 [GitHub's forking functionality]: https://help.github.com/articles/fork-a-repo
 [Grails]: http://grails.org
 [Groovy]: http://groovy.codehaus.org
