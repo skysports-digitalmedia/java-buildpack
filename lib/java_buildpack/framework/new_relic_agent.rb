@@ -1,6 +1,6 @@
 # Encoding: utf-8
 # Cloud Foundry Java Buildpack
-# Copyright 2013-2015 the original author or authors.
+# Copyright 2013 the original author or authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,15 +34,17 @@ module JavaBuildpack
       # (see JavaBuildpack::Component::BaseComponent#release)
       def release
         @droplet.java_opts
-          .add_javaagent(@droplet.sandbox + jar_name)
-          .add_system_property('newrelic.home', @droplet.sandbox)
-          .add_system_property('newrelic.config.license_key', license_key)
-          .add_system_property('newrelic.config.app_name', "'#{application_name}'")
-          .add_system_property('newrelic.config.log_file_path', logs_dir)
-        @droplet.java_opts.add_system_property('newrelic.enable.java.8', 'true') if java_8?
-        @droplet.java_opts.add_system_property('newrelic.config.proxy_host', proxy_host) if proxy_host?
-        @droplet.java_opts.add_system_property('newrelic.config.proxy_password', proxy_password) if proxy_password?
-        @droplet.java_opts.add_system_property('newrelic.config.proxy_port', proxy_port) if proxt_port?
+        .add_javaagent(@droplet.sandbox + jar_name)
+        .add_system_property('newrelic.home', @droplet.sandbox)
+        .add_system_property('newrelic.config.license_key', license_key)
+        .add_system_property('newrelic.config.app_name', "'#{application_name}'")
+        .add_system_property('newrelic.config.log_file_path', logs_dir)
+        .add_system_property('newrelic.config.log_level', "info")
+        @droplet.java_opts.add_system_property('newrelic.enable.java.8', 'true') if @droplet.java_home.version[1] == '8'
+        @droplet.java_opts.add_system_property('newrelic.config.proxy_host', '$WEB_PROXY_HOST') if !proxy_host.nil? and !proxy_host.empty?
+        @droplet.java_opts.add_system_property('newrelic.config.proxy_user', '$WEB_PROXY_USER') if !proxy_user.nil? and !proxy_user.empty?
+        @droplet.java_opts.add_system_property('newrelic.config.proxy_password', '$WEB_PROXY_PASS') if !proxy_password.nil? and !proxy_password.empty?
+        @droplet.java_opts.add_system_property('newrelic.config.proxy_port', '$WEB_PROXY_PORT') if !proxy_port.nil?
       end
 
       protected
@@ -52,7 +54,7 @@ module JavaBuildpack
         @application.services.one_service? FILTER, 'licenseKey'
       end
 
-      private
+      p
 
       FILTER = /newrelic/.freeze
       PROXY_FILTER = /proxy/.freeze
@@ -60,12 +62,9 @@ module JavaBuildpack
       private_constant :FILTER
       private_constant :PROXY_FILTER
 
-      def java_8?
-        @droplet.java_home.version[1] == '8'
-      end
-
       def application_name
-        @application.details['application_name']
+        # @application.details['new_relic_application_name']
+        ENV['new_relic_application_name']
       end
 
       def license_key
@@ -77,15 +76,19 @@ module JavaBuildpack
       end
 
       def proxy_host
-        @application.services.find_service(PROXY)['credentials']['host']
+        @application.services.find_service(PROXY_FILTER)['credentials']['host']
+      end
+
+      def proxy_user
+        @application.services.find_service(PROXY_FILTER)['credentials']['username']
       end
 
       def proxy_password
-        @application.services.find_service(PROXY)['credentials']['password']
+        @application.services.find_service(PROXY_FILTER)['credentials']['password']
       end
 
       def proxy_port
-        @application.services.find_service(PROXY)['credentials']['port']
+        @application.services.find_service(PROXY_FILTER)['credentials']['port']
       end
 
     end
